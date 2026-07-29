@@ -1,0 +1,11 @@
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(), microphone=(), camera=()
+  # 還是 demo 站（示意數字、假案例、暫用照片），先擋搜尋引擎收錄。
+  # 正式站綁上 linmei.com.tw 時，把下面這行刪掉。
+  X-Robots-Tag: noindex, nofollow
+
+/assets/*
+  Cache-Control: public, max-age=3600

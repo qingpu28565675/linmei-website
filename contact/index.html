@@ -84,7 +84,7 @@
       <h2 class="sec fx-fade">詢價表單</h2>
       <p class="lead fx-fade" style="margin-top:18px">填寫以下欄位，我們會在一個工作日內回覆，並與您約定現場勘查時間。欄位名稱後標示紅色星號者為必填。</p>
     </div>
-    <form class="form fx-fade" style="max-width:840px" onsubmit="return false">
+    <form id="quote-form" class="form fx-fade" style="max-width:840px">
       <div class="two">
         <div class="row">
           <label for="f-co">公司或機關名稱</label>
@@ -129,8 +129,17 @@
         <label for="f-msg">需求說明</label>
         <textarea id="f-msg" name="message" placeholder="請簡述案場現況、面積或株數、是否已有圖說與數量計算表，以及需不需要含後續定期維護。"></textarea>
       </div>
-      <p class="hint">表單送出功能待後台上線，目前請直接來電 03-000-0000 或來信 service@linmei.com.tw。<br>填寫之資料僅用於本次詢價與現場勘查聯繫，不作其他用途。</p>
-      <div><button type="submit">送出詢價</button></div>
+      <!-- 蜜罐欄位：真人看不到，機器人會填。中國連線也能用，不像 reCAPTCHA 會被擋。 -->
+      <div aria-hidden="true" style="position:absolute;left:-9999px" tabindex="-1">
+        <label for="f-web">網址</label>
+        <input id="f-web" name="website" type="text" autocomplete="off" tabindex="-1">
+      </div>
+      <div class="cf-turnstile" data-sitekey="0x4AAAAAAEAwyIbSSPtc4l7e" data-language="zh-tw" style="margin-top:8px"></div>
+      <p class="hint">填寫之資料僅用於本次詢價與現場勘查聯繫，不作其他用途。</p>
+      <div>
+        <button type="submit">送出詢價</button>
+        <span id="quote-status" role="status" aria-live="polite" style="margin-left:14px;font-size:.94rem"></span>
+      </div>
     </form>
   </div>
 </section>
@@ -212,5 +221,55 @@
 </footer>
 
 <script src="/assets/site.js"></script>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+<script>
+(function(){
+  var form = document.getElementById('quote-form');
+  if(!form) return;
+  var status = document.getElementById('quote-status');
+  var btn = form.querySelector('button[type=submit]');
+
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    var data = Object.fromEntries(new FormData(form).entries());
+    data.token = (form.querySelector('[name=cf-turnstile-response]')||{}).value || '';
+
+    if(!data.token){
+      status.textContent = '請先完成上方的人機驗證。';
+      status.style.color = '#b3261e';
+      return;
+    }
+
+    btn.disabled = true;
+    status.style.color = '';
+    status.textContent = '送出中…';
+
+    fetch('/api/contact', {
+      method: 'POST',
+      headers: {'content-type':'application/json'},
+      body: JSON.stringify(data)
+    })
+    .then(function(r){ return r.json().catch(function(){ return {ok:false}; }); })
+    .then(function(r){
+      if(r.ok){
+        form.reset();
+        status.style.color = '#1b7f4b';
+        status.textContent = '已送出，我們會在一個工作日內回覆。';
+      } else {
+        status.style.color = '#b3261e';
+        status.textContent = r.error || '送出失敗，請改用電話聯絡我們。';
+      }
+    })
+    .catch(function(){
+      status.style.color = '#b3261e';
+      status.textContent = '網路異常，請稍後再試或直接來電。';
+    })
+    .finally(function(){
+      btn.disabled = false;
+      if(window.turnstile) window.turnstile.reset();
+    });
+  });
+})();
+</script>
 </body>
 </html>
